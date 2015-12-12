@@ -46,7 +46,8 @@ import org.springframework.security.oauth2.provider.endpoint.TokenKeyEndpoint;
 import org.springframework.security.oauth2.provider.endpoint.WhitelabelApprovalEndpoint;
 import org.springframework.security.oauth2.provider.endpoint.WhitelabelErrorEndpoint;
 import org.springframework.security.oauth2.provider.error.WebResponseExceptionTranslator;
-import org.springframework.security.oauth2.provider.response.CustomResponseTypesHandler;
+import org.springframework.security.oauth2.provider.response.AuthorizationRequestViewResolver;
+import org.springframework.security.oauth2.provider.response.ResponseTypesHandler;
 import org.springframework.security.oauth2.provider.token.AuthorizationServerTokenServices;
 import org.springframework.security.oauth2.provider.token.ConsumerTokenServices;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
@@ -72,8 +73,7 @@ public class AuthorizationServerEndpointsConfiguration {
 		for (AuthorizationServerConfigurer configurer : configurers) {
 			try {
 				configurer.configure(endpoints);
-			}
-			catch (Exception e) {
+			} catch (Exception e) {
 				throw new IllegalStateException("Cannot configure enpdoints", e);
 			}
 		}
@@ -87,13 +87,13 @@ public class AuthorizationServerEndpointsConfiguration {
 		authorizationEndpoint.setUserApprovalPage(extractPath(mapping, "/oauth/confirm_access"));
 		authorizationEndpoint.setProviderExceptionHandler(exceptionTranslator());
 		authorizationEndpoint.setErrorPage(extractPath(mapping, "/oauth/error"));
-		authorizationEndpoint.setTokenGranter(tokenGranter());
 		authorizationEndpoint.setClientDetailsService(clientDetailsService);
 		authorizationEndpoint.setAuthorizationCodeServices(authorizationCodeServices());
 		authorizationEndpoint.setOAuth2RequestFactory(oauth2RequestFactory());
 		authorizationEndpoint.setOAuth2RequestValidator(oauth2RequestValidator());
 		authorizationEndpoint.setUserApprovalHandler(userApprovalHandler());
-		authorizationEndpoint.setCustomResponseTypesHandler(customResponseTypesHandler());
+		authorizationEndpoint.setResponseTypesHandler(responseTypesHandler());
+		authorizationEndpoint.setAuthorizationRequestViewResolver(authorizationRequestViewResolver());
 		return authorizationEndpoint;
 	}
 
@@ -138,9 +138,12 @@ public class AuthorizationServerEndpointsConfiguration {
 	}
 
 	/**
-	 * This needs to be a <code>@Bean</code> so that it can be <code>@Transactional</code> (in case the token store
-	 * supports them). If you are overriding the token services in an {@link AuthorizationServerConfigurer} consider
-	 * making it a <code>@Bean</code> for the same reason (assuming you need transactions, e.g. for a JDBC token store).
+	 * This needs to be a <code>@Bean</code> so that it can be
+	 * <code>@Transactional</code> (in case the token store supports them). If
+	 * you are overriding the token services in an
+	 * {@link AuthorizationServerConfigurer} consider making it a
+	 * <code>@Bean</code> for the same reason (assuming you need transactions,
+	 * e.g. for a JDBC token store).
 	 * 
 	 * @return an AuthorizationServerTokenServices
 	 */
@@ -175,7 +178,7 @@ public class AuthorizationServerEndpointsConfiguration {
 	private AuthorizationCodeServices authorizationCodeServices() throws Exception {
 		return getEndpointsConfigurer().getAuthorizationCodeServices();
 	}
-	
+
 	private WebResponseExceptionTranslator exceptionTranslator() {
 		return getEndpointsConfigurer().getExceptionTranslator();
 	}
@@ -184,8 +187,12 @@ public class AuthorizationServerEndpointsConfiguration {
 		return getEndpointsConfigurer().getTokenGranter();
 	}
 
-	private CustomResponseTypesHandler customResponseTypesHandler() {
-		return getEndpointsConfigurer().getCustomResponseTypesHandler();
+	private ResponseTypesHandler responseTypesHandler() {
+		return getEndpointsConfigurer().getResponseTypesHandler();
+	}
+
+	private AuthorizationRequestViewResolver authorizationRequestViewResolver() {
+		return getEndpointsConfigurer().getAuthorizationRequestViewResolver();
 	}
 
 	private String extractPath(FrameworkEndpointHandlerMapping mapping, String page) {
