@@ -100,23 +100,24 @@ class JwkVerifyingJwtAccessTokenConverter extends JwtAccessTokenConverter {
 		if (keyIdHeader == null) {
 			throw new InvalidTokenException("Invalid JWT/JWS: " + KEY_ID + " is a required JOSE Header");
 		}
-		JwkDefinition jwkDefinition = this.jwkDefinitionSource.getDefinitionLoadIfNecessary(keyIdHeader);
-		if (jwkDefinition == null) {
+		JwkDefinitionSource.JwkDefinitionHolder jwkDefinitionHolder = this.jwkDefinitionSource.getDefinitionLoadIfNecessary(keyIdHeader);
+		if (jwkDefinitionHolder == null) {
 			throw new InvalidTokenException("Invalid JOSE Header " + KEY_ID + " (" + keyIdHeader + ")");
 		}
 
+		JwkDefinition jwkDefinition = jwkDefinitionHolder.getJwkDefinition();
 		// Validate "alg" header
 		String algorithmHeader = headers.get(ALGORITHM);
 		if (algorithmHeader == null) {
 			throw new InvalidTokenException("Invalid JWT/JWS: " + ALGORITHM + " is a required JOSE Header");
 		}
-		if (!algorithmHeader.equals(jwkDefinition.getAlgorithm().headerParamValue())) {
+		if (jwkDefinition.getAlgorithm() != null && !algorithmHeader.equals(jwkDefinition.getAlgorithm().headerParamValue())) {
 			throw new InvalidTokenException("Invalid JOSE Header " + ALGORITHM + " (" + algorithmHeader + ")" +
 					" does not match algorithm associated to JWK with " + KEY_ID + " (" + keyIdHeader + ")");
 		}
 
 		// Verify signature
-		SignatureVerifier verifier = this.jwkDefinitionSource.getVerifier(keyIdHeader);
+		SignatureVerifier verifier = jwkDefinitionHolder.getSignatureVerifier();
 		Jwt jwt = JwtHelper.decode(token);
 		jwt.verifySignature(verifier);
 
@@ -125,6 +126,7 @@ class JwkVerifyingJwtAccessTokenConverter extends JwtAccessTokenConverter {
 			Integer expiryInt = (Integer) claims.get(EXP);
 			claims.put(EXP, new Long(expiryInt));
 		}
+		this.getJwtClaimsSetVerifier().verify(claims);
 
 		return claims;
 	}
