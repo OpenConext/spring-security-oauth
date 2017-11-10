@@ -26,6 +26,7 @@ import org.springframework.security.jwt.crypto.sign.SignatureVerifier;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.mockito.Matchers.any;
@@ -46,6 +47,11 @@ public class JwkDefinitionSourceTest {
 		new JwkDefinitionSource(DEFAULT_JWK_SET_URL.substring(1));
 	}
 
+	@Test(expected = IllegalArgumentException.class)
+	public void constructorListWhenInvalidJwkSetUrlThenThrowIllegalArgumentException() throws Exception {
+		new JwkDefinitionSource(Arrays.asList(DEFAULT_JWK_SET_URL.substring(1)));
+	}
+
 	@Test
 	public void getDefinitionLoadIfNecessaryWhenKeyIdNotFoundThenLoadJwkDefinitions() throws Exception {
 		JwkDefinitionSource jwkDefinitionSource = spy(new JwkDefinitionSource(DEFAULT_JWK_SET_URL));
@@ -60,7 +66,7 @@ public class JwkDefinitionSourceTest {
 	public void getVerifierWhenModulusMostSignificantBitIs1ThenVerifierStillVerifyContentSignature() throws Exception {
 		String jwkSetUrl = JwkDefinitionSourceTest.class.getResource("jwk-set.json").toString();
 		JwkDefinitionSource jwkDefinitionSource = new JwkDefinitionSource(jwkSetUrl);
-		SignatureVerifier verifier = jwkDefinitionSource.getVerifier("_Ci3-VfV_N0YAG22NQOgOUpFBDDcDe_rJxpu5JK702o");
+		SignatureVerifier verifier = jwkDefinitionSource.getDefinitionLoadIfNecessary("_Ci3-VfV_N0YAG22NQOgOUpFBDDcDe_rJxpu5JK702o").getSignatureVerifier();
 		String token = this.readToken("token.jwt");
 		int secondPeriodIndex = token.indexOf('.', token.indexOf('.') + 1);
 		String contentString = token.substring(0, secondPeriodIndex);

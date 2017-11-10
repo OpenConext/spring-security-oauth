@@ -27,9 +27,7 @@ import java.net.URL;
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.RSAPublicKeySpec;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -44,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Joe Grandja
  */
 class JwkDefinitionSource {
-	private final URL jwkSetUrl;
+	private final List<URL> jwkSetUrls;
 	private final Map<String, JwkDefinitionHolder> jwkDefinitions = new ConcurrentHashMap<String, JwkDefinitionHolder>();
 	private static final JwkSetConverter jwkSetConverter = new JwkSetConverter();
 
@@ -54,26 +52,23 @@ class JwkDefinitionSource {
 	 * @param jwkSetUrl the JWK Set URL
 	 */
 	JwkDefinitionSource(String jwkSetUrl) {
-		try {
-			this.jwkSetUrl = new URL(jwkSetUrl);
-		} catch (MalformedURLException ex) {
-			throw new IllegalArgumentException("Invalid JWK Set URL: " + ex.getMessage(), ex);
-		}
+		this(Arrays.asList(jwkSetUrl));
 	}
 
 	/**
-	 * Returns the JWK definition matching the provided keyId (&quot;kid&quot;).
+	 * Creates a new instance using the provided URLs as the location for the JWK Sets.
 	 *
-	 * @param keyId the Key ID (&quot;kid&quot;)
-	 * @return the matching {@link JwkDefinition} or null if not found
+	 * @param jwkSetUrls the JWK Set URLs
 	 */
-	JwkDefinition getDefinition(String keyId) {
-		JwkDefinition result = null;
-		JwkDefinitionHolder jwkDefinitionHolder = this.jwkDefinitions.get(keyId);
-		if (jwkDefinitionHolder != null) {
-			result = jwkDefinitionHolder.getJwkDefinition();
+	JwkDefinitionSource(List<String> jwkSetUrls) {
+		this.jwkSetUrls = new ArrayList<URL>();
+		for(String jwkSetUrl : jwkSetUrls) {
+			try {
+				this.jwkSetUrls.add(new URL(jwkSetUrl));
+			} catch (MalformedURLException ex) {
+				throw new IllegalArgumentException("Invalid JWK Set URL: " + ex.getMessage(), ex);
+			}
 		}
-		return result;
 	}
 
 	/**
@@ -84,29 +79,28 @@ class JwkDefinitionSource {
 	 * @param keyId the Key ID (&quot;kid&quot;)
 	 * @return the matching {@link JwkDefinition} or null if not found
 	 */
-	JwkDefinition getDefinitionLoadIfNecessary(String keyId) {
-		JwkDefinition result = this.getDefinition(keyId);
+	JwkDefinitionHolder getDefinitionLoadIfNecessary(String keyId) {
+		JwkDefinitionHolder result = this.getDefinition(keyId);
 		if (result != null) {
 			return result;
 		}
-		this.jwkDefinitions.clear();
-		this.jwkDefinitions.putAll(loadJwkDefinitions(this.jwkSetUrl));
-		return this.getDefinition(keyId);
+		synchronized (this.jwkDefinitions) {
+			this.jwkDefinitions.clear();
+			for (URL jwkSetUrl : jwkSetUrls) {
+				this.jwkDefinitions.putAll(loadJwkDefinitions(jwkSetUrl));
+			}
+			return this.getDefinition(keyId);
+		}
 	}
 
 	/**
-	 * Returns the {@link SignatureVerifier} matching the provided keyId (&quot;kid&quot;).
+	 * Returns the JWK definition matching the provided keyId (&quot;kid&quot;).
 	 *
 	 * @param keyId the Key ID (&quot;kid&quot;)
-	 * @return the matching {@link SignatureVerifier} or null if not found
+	 * @return the matching {@link JwkDefinition} or null if not found
 	 */
-	SignatureVerifier getVerifier(String keyId) {
-		SignatureVerifier result = null;
-		JwkDefinition jwkDefinition = this.getDefinitionLoadIfNecessary(keyId);
-		if (jwkDefinition != null) {
-			result = this.jwkDefinitions.get(keyId).getSignatureVerifier();
-		}
-		return result;
+	private JwkDefinitionHolder getDefinition(String keyId) {
+		return this.jwkDefinitions.get(keyId);
 	}
 
 	/**
@@ -151,7 +145,11 @@ class JwkDefinitionSource {
 			RSAPublicKey rsaPublicKey = (RSAPublicKey) KeyFactory.getInstance("RSA")
 					.generatePublic(new RSAPublicKeySpec(modulus, exponent));
 
-			result = new RsaVerifier(rsaPublicKey, rsaDefinition.getAlgorithm().standardName());
+			if (rsaDefinition.getAlgorithm() != null) {
+				result = new RsaVerifier(rsaPublicKey, rsaDefinition.getAlgorithm().standardName());
+			} else {
+				result = new RsaVerifier(rsaPublicKey);
+			}
 
 		} catch (Exception ex) {
 			throw new JwkException("An error occurred while creating a RSA Public Key Verifier for " +
@@ -169,11 +167,11 @@ class JwkDefinitionSource {
 			this.signatureVerifier = signatureVerifier;
 		}
 
-		private JwkDefinition getJwkDefinition() {
+		JwkDefinition getJwkDefinition() {
 			return jwkDefinition;
 		}
 
-		private SignatureVerifier getSignatureVerifier() {
+		SignatureVerifier getSignatureVerifier() {
 			return signatureVerifier;
 		}
 	}
