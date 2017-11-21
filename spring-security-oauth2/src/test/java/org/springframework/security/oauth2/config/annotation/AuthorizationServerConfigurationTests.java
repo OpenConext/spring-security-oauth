@@ -37,6 +37,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.servlet.configuration.EnableWebMvcSecurity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.AuthorityUtils;
@@ -82,6 +83,14 @@ import org.springframework.web.servlet.View;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import org.springframework.web.servlet.view.RedirectView;
 
+import javax.sql.DataSource;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.Assert.*;
+
 /**
  * @author Dave Syer
  * 
@@ -117,7 +126,8 @@ public class AuthorizationServerConfigurationTests {
 				new Object[] { BeanCreationException.class, new Class<?>[] { AuthorizationServerTypes.class } },
 				new Object[] { null, new Class<?>[] { AuthorizationServerCustomGranter.class } },
 				new Object[] { null, new Class<?>[] { AuthorizationServerResponseTypeHandler.class } },
-				new Object[] { null, new Class<?>[] { AuthorizationServerAuthorizationRequestViewResolver.class } }
+				new Object[] { null, new Class<?>[] { AuthorizationServerAuthorizationRequestViewResolver.class } },
+				new Object[] { null, new Class<?>[] { AuthorizationServerSslEnabled.class } }
 		// @formatter:on
 		);
 	}
@@ -686,6 +696,7 @@ public class AuthorizationServerConfigurationTests {
 
 	}
 
+<<<<<<< HEAD
 	@Configuration
 	@EnableWebMvcSecurity
 	@EnableAuthorizationServer
@@ -776,4 +787,14 @@ public class AuthorizationServerConfigurationTests {
 	}
 
 
+	// gh-638
+	@EnableWebSecurity
+	@EnableAuthorizationServer
+	protected static class AuthorizationServerSslEnabled extends AuthorizationServerConfigurerAdapter {
+
+		@Override
+		public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
+			security.sslOnly();
+		}
+	}
 }
