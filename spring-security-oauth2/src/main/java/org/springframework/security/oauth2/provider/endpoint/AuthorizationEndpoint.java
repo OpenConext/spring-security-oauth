@@ -162,7 +162,7 @@ public class AuthorizationEndpoint extends AbstractEndpoint {
 
 			// Validation is all done, so we can check for auto approval...
 			if (authorizationRequest.isApproved()) {
-					//We would have not gotten this far if the customResponseTypesHandler could not handle this
+					//We would have not gotten this far if the responseTypesHandler could not handle this
 					return responseTypesHandler.handleApprovedAuthorizationRequest(responseTypes,
 							authorizationRequest, authentication, authorizationCodeServices);
 			}
