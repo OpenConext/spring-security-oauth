@@ -52,7 +52,9 @@ import org.springframework.security.oauth2.provider.client.InMemoryClientDetails
 import org.springframework.security.oauth2.provider.code.AuthorizationCodeServices;
 import org.springframework.security.oauth2.provider.code.AuthorizationCodeTokenGranter;
 import org.springframework.security.oauth2.provider.code.InMemoryAuthorizationCodeServices;
+import org.springframework.security.oauth2.provider.endpoint.DefaultRedirectResolver;
 import org.springframework.security.oauth2.provider.endpoint.FrameworkEndpointHandlerMapping;
+import org.springframework.security.oauth2.provider.endpoint.RedirectResolver;
 import org.springframework.security.oauth2.provider.error.DefaultWebResponseExceptionTranslator;
 import org.springframework.security.oauth2.provider.error.WebResponseExceptionTranslator;
 import org.springframework.security.oauth2.provider.implicit.ImplicitTokenGranter;
@@ -145,6 +147,8 @@ public final class AuthorizationServerEndpointsConfigurer {
 
 	private WebResponseExceptionTranslator exceptionTranslator;
 
+	private RedirectResolver redirectResolver;
+
 	public AuthorizationServerTokenServices getTokenServices() {
 		return ProxyCreator.getProxy(AuthorizationServerTokenServices.class,
 				new ObjectFactory<AuthorizationServerTokenServices>() {
@@ -222,6 +226,11 @@ public final class AuthorizationServerEndpointsConfigurer {
 		if (tokenServices != null) {
 			this.tokenServicesOverride = true;
 		}
+		return this;
+	}
+
+	public AuthorizationServerEndpointsConfigurer redirectResolver(RedirectResolver redirectResolver) {
+		this.redirectResolver = redirectResolver;
 		return this;
 	}
 
@@ -386,6 +395,10 @@ public final class AuthorizationServerEndpointsConfigurer {
 		return exceptionTranslator();
 	}
 
+	public RedirectResolver getRedirectResolver() {
+		return redirectResolver();
+	}
+
 	private ResourceServerTokenServices resourceTokenServices() {
 		if (resourceTokenServices == null) {
 			if (tokenServices instanceof ResourceServerTokenServices) {
@@ -536,6 +549,14 @@ public final class AuthorizationServerEndpointsConfigurer {
 		}
 		exceptionTranslator = new DefaultWebResponseExceptionTranslator();
 		return exceptionTranslator;
+	}
+
+	private RedirectResolver redirectResolver() {
+		if (redirectResolver != null) {
+			return redirectResolver;
+		}
+		redirectResolver = new DefaultRedirectResolver();
+		return redirectResolver;
 	}
 
 	private OAuth2RequestFactory requestFactory() {

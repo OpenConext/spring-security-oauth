@@ -49,12 +49,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
 import org.springframework.security.oauth2.common.exceptions.OAuth2Exception;
 import org.springframework.security.jwt.crypto.sign.MacSigner;
+import org.springframework.security.oauth2.common.exceptions.OAuth2Exception;
 import org.springframework.security.oauth2.config.annotation.configurers.ClientDetailsServiceConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.AuthorizationServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableAuthorizationServer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.AuthorizationRequest;
+import org.springframework.security.oauth2.provider.ClientDetails;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
 import org.springframework.security.oauth2.provider.OAuth2RequestFactory;
 import org.springframework.security.oauth2.provider.approval.DefaultUserApprovalHandler;
@@ -65,6 +67,7 @@ import org.springframework.security.oauth2.provider.client.InMemoryClientDetails
 import org.springframework.security.oauth2.provider.code.AuthorizationCodeServices;
 import org.springframework.security.oauth2.provider.endpoint.AuthorizationEndpoint;
 import org.springframework.security.oauth2.provider.endpoint.CheckTokenEndpoint;
+import org.springframework.security.oauth2.provider.endpoint.RedirectResolver;
 import org.springframework.security.oauth2.provider.endpoint.TokenEndpoint;
 import org.springframework.security.oauth2.provider.error.DefaultWebResponseExceptionTranslator;
 import org.springframework.security.oauth2.provider.response.AuthorizationRequestViewResolver;
@@ -82,6 +85,14 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.View;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import org.springframework.web.servlet.view.RedirectView;
+
+import javax.sql.DataSource;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.Assert.*;
 
 import javax.sql.DataSource;
 import java.util.Arrays;
@@ -127,7 +138,9 @@ public class AuthorizationServerConfigurationTests {
 				new Object[] { null, new Class<?>[] { AuthorizationServerCustomGranter.class } },
 				new Object[] { null, new Class<?>[] { AuthorizationServerResponseTypeHandler.class } },
 				new Object[] { null, new Class<?>[] { AuthorizationServerAuthorizationRequestViewResolver.class } },
-				new Object[] { null, new Class<?>[] { AuthorizationServerSslEnabled.class } }
+				new Object[] { null, new Class<?>[] { AuthorizationServerSslEnabled.class } },
+				new Object[] { null, new Class<?>[] { AuthorizationServerCustomRedirectResolver.class } },
+				new Object[] { null, new Class<?>[] { AuthorizationServerDefaultRedirectResolver.class } }
 		// @formatter:on
 		);
 	}
@@ -565,6 +578,51 @@ public class AuthorizationServerConfigurationTests {
 
 	}
 
+	@EnableWebSecurity
+	@EnableAuthorizationServer
+	protected static class AuthorizationServerCustomRedirectResolver extends AuthorizationServerConfigurerAdapter
+			implements Runnable {
+
+		@Autowired
+		private ApplicationContext context;
+
+		@Override
+		public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
+			endpoints.redirectResolver(new CustomRedirectResolver());
+		}
+
+		@Override
+		public void run() {
+			RedirectResolver resolver = (RedirectResolver) ReflectionTestUtils.getField(context.getBean(AuthorizationEndpoint.class), "redirectResolver");
+
+			assertNotNull(resolver);
+			assertTrue(resolver instanceof CustomRedirectResolver);
+		}
+
+		static class CustomRedirectResolver implements RedirectResolver {
+			@Override
+			public String resolveRedirect(final String requestedRedirect, final ClientDetails client) throws OAuth2Exception {
+				return "go/here";
+			}
+		}
+	}
+
+	@EnableWebSecurity
+	@EnableAuthorizationServer
+	protected static class AuthorizationServerDefaultRedirectResolver extends AuthorizationServerConfigurerAdapter
+			implements Runnable {
+
+		@Autowired
+		private ApplicationContext context;
+
+		@Override
+		public void run() {
+			assertNotNull(
+					ReflectionTestUtils.getField(context.getBean(AuthorizationEndpoint.class), "redirectResolver"));
+		}
+
+	}
+
 	@Configuration
 	@EnableWebMvcSecurity
 	@EnableAuthorizationServer
@@ -696,7 +754,6 @@ public class AuthorizationServerConfigurationTests {
 
 	}
 
-<<<<<<< HEAD
 	@Configuration
 	@EnableWebMvcSecurity
 	@EnableAuthorizationServer
