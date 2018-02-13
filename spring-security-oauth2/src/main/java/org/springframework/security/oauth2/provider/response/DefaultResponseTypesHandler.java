@@ -71,9 +71,7 @@ public class DefaultResponseTypesHandler implements ResponseTypesHandler {
 
     // We can grant a token and return it with implicit approval.
     private ModelAndView getImplicitGrantResponse(AuthorizationRequest authorizationRequest) throws OAuth2Exception {
-        TokenRequest tokenRequest = oAuth2RequestFactory.createTokenRequest(authorizationRequest, "implicit");
-        OAuth2Request storedOAuth2Request = oAuth2RequestFactory.createOAuth2Request(authorizationRequest);
-        OAuth2AccessToken accessToken = getAccessTokenForImplicitGrant(tokenRequest, storedOAuth2Request);
+        OAuth2AccessToken accessToken = getOAuth2AccessToken(authorizationRequest);
         if (accessToken == null) {
             throw new UnsupportedResponseTypeException("Unsupported response type: token");
         }
@@ -81,14 +79,15 @@ public class DefaultResponseTypesHandler implements ResponseTypesHandler {
         return new ModelAndView(view);
     }
 
-    private OAuth2AccessToken getAccessTokenForImplicitGrant(TokenRequest tokenRequest,
-                                                             OAuth2Request storedOAuth2Request) {
+    protected OAuth2AccessToken getOAuth2AccessToken(AuthorizationRequest authorizationRequest) {
+        TokenRequest tokenRequest = oAuth2RequestFactory.createTokenRequest(authorizationRequest, "implicit");
+        OAuth2Request storedOAuth2Request = oAuth2RequestFactory.createOAuth2Request(authorizationRequest);
         OAuth2AccessToken accessToken = null;
         // These 1 method calls have to be atomic, otherwise the ImplicitGrantService can have a race condition where
         // one thread removes the token request before another has a chance to redeem it.
         synchronized (this.implicitLock) {
             accessToken = tokenGranter.grant("implicit",
-                    new ImplicitTokenRequest(tokenRequest, storedOAuth2Request));
+                new ImplicitTokenRequest(tokenRequest, storedOAuth2Request));
         }
         return accessToken;
     }
