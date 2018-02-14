@@ -71,7 +71,7 @@ public class DefaultResponseTypesHandler implements ResponseTypesHandler {
 
     // We can grant a token and return it with implicit approval.
     private ModelAndView getImplicitGrantResponse(AuthorizationRequest authorizationRequest) throws OAuth2Exception {
-        OAuth2AccessToken accessToken = getOAuth2AccessToken(authorizationRequest);
+        OAuth2AccessToken accessToken = createOAuth2AccessToken(authorizationRequest);
         if (accessToken == null) {
             throw new UnsupportedResponseTypeException("Unsupported response type: token");
         }
@@ -79,7 +79,7 @@ public class DefaultResponseTypesHandler implements ResponseTypesHandler {
         return new ModelAndView(view);
     }
 
-    protected OAuth2AccessToken getOAuth2AccessToken(AuthorizationRequest authorizationRequest) {
+    protected OAuth2AccessToken createOAuth2AccessToken(AuthorizationRequest authorizationRequest) {
         TokenRequest tokenRequest = oAuth2RequestFactory.createTokenRequest(authorizationRequest, "implicit");
         OAuth2Request storedOAuth2Request = oAuth2RequestFactory.createOAuth2Request(authorizationRequest);
         OAuth2AccessToken accessToken = null;
@@ -96,10 +96,8 @@ public class DefaultResponseTypesHandler implements ResponseTypesHandler {
                                               Authentication authUser,
                                               AuthorizationCodeServices authorizationCodeServices) {
         try {
-            OAuth2Request storedOAuth2Request = oAuth2RequestFactory.createOAuth2Request(authorizationRequest);
-
-            OAuth2Authentication combinedAuth = new OAuth2Authentication(storedOAuth2Request, authUser);
-            String authorizationCode = authorizationCodeServices.createAuthorizationCode(combinedAuth);
+            String authorizationCode = createAuthorizationCode(authorizationRequest, authUser,
+                authorizationCodeServices);
 
             return authorizationRequestViewResolver.getSuccessfulAuthorizationCodeView(authorizationRequest, authorizationCode);
 
@@ -109,6 +107,13 @@ public class DefaultResponseTypesHandler implements ResponseTypesHandler {
             }
             throw e;
         }
+    }
+
+    protected String createAuthorizationCode(AuthorizationRequest authorizationRequest, Authentication authUser, AuthorizationCodeServices authorizationCodeServices) {
+        OAuth2Request storedOAuth2Request = oAuth2RequestFactory.createOAuth2Request(authorizationRequest);
+
+        OAuth2Authentication combinedAuth = new OAuth2Authentication(storedOAuth2Request, authUser);
+        return authorizationCodeServices.createAuthorizationCode(combinedAuth);
     }
 
     public void setTokenGranter(TokenGranter tokenGranter) {
